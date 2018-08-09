@@ -1,13 +1,15 @@
 # utapass-sqa-tools
 
-Paservan-MacBook:utapass-sqa-tools paservanyu$ pwd
+```shell
+$ pwd
 /Users/paservanyu/git/utapass-sqa-tools
-Paservan-MacBook:utapass-sqa-tools paservanyu$ ls -l
+
+$ ls -l
 total 16
 -rw-r--r--  1 paservanyu  staff    19 Aug  9 10:15 README.md
 -rw-r--r--@ 1 paservanyu  staff  1484 Aug  9 10:47 utapass-espresso-init.sh
 
-Paservan-MacBook:utapass-sqa-tools paservanyu$ sh ./utapass-espresso-init.sh
+$ sh ./utapass-espresso-init.sh
 ============================================================
 Cloning Souce Code - Utapass Android
 ============================================================
@@ -33,4 +35,5 @@ remote: Total 267 (delta 184), reused 237 (delta 158), pack-reused 0
 Receiving objects: 100% (267/267), 52.65 KiB | 261.00 KiB/s, done.
 Resolving deltas: 100% (184/184), done.
 
-Paservan-MacBook:utapass-sqa-tools paservanyu$
+$
+```
