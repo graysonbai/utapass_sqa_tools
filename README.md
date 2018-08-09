@@ -1,4 +1,13 @@
-# utapass-sqa-tools
+# utapass-espresso-init.sh
+
+This tool is used to initialize espresso environment.
+
+It will do:
+1. clone utapass android source code
+2. cleaning up some legacy scripts in folder used by espresso
+3. clong utapass espresso scripts
+
+Here is an example:
 
 ```shell
 $ pwd
