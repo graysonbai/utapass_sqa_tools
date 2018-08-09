@@ -1,4 +1,4 @@
-# utapass-espresso-init.sh
+# espresso-init.sh
 
 This tool is used to initialize espresso environment.
 
