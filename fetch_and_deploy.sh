@@ -277,6 +277,9 @@ for arg in "$@"; do
         --action | -a )
             action="$2"; shift 2 ;;
 
+        --upgrade )
+            action="upgrade"; shift 2 ;;
+
     esac
 done
 
