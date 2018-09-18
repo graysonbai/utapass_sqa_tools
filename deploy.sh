@@ -60,6 +60,7 @@ function launch() {
     [ $? -eq 0 ] && echo "" || exit 1
 }
 
+platform="android"
 type="dev"
 flavor="debug"
 build_number="lastBuild"
@@ -69,8 +70,11 @@ site="${base_url}UtaPassAndroidDev/"
 apk_regex=""
 apk_name=""
 
+# sov37
 device="BH900026C7"
 
+# scv35
+#device="988851464d55504a56"
 action="install"
 
 # if [ "$#" -eq 1 ]; then
@@ -80,6 +84,9 @@ action="install"
     for arg in "$@"; do
 
         case "$arg" in
+            --ios )
+                platform="ios"; shift ;;
+                ;;
 
             --master )
                 # echo "Fetching master build not supported yet ..." && exit 1
@@ -122,7 +129,7 @@ action="install"
                 ;;
 
             * )
-                build_number=$1
+                build_number=$arg
                 
         esac
     done
