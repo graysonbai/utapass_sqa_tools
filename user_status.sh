@@ -48,6 +48,7 @@ for arg in "$@"; do
             AUID="$2"; shift 2 ;;
 
         -el | --end-leave )
+            PKG_NAME="no"
             end_leave
             restart
             exit 0
