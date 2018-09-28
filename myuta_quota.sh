@@ -42,7 +42,8 @@ function grant() {
 for arg in "$@"; do
     case "$arg" in
         --auid )
-            auid_to_msno $2 ; shift 2
+            AUID=$2
+            auid_to_msno; shift 2
             ;;
 
         --query )
