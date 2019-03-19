@@ -26,6 +26,35 @@ function print_usage() {
     echo ""
 }
 
+function screen_turn_on() {
+    case "${platform}" in
+        Android )
+            echo "Turn on screen ..."
+
+            for device in `adb devices | grep 'device$' | awk '{print $1}'`; do
+                printf '%s : ' "$device"
+
+                adb -s $device shell dumpsys power | \
+                    grep -i  'display power' | \
+                    grep -iq 'off' && \
+                    adb -s $device shell input keyevent 26 && \
+                    adb -s $device shell input keyevent 82
+
+                [ $? -ne 0 ] && echo "Skip (ScreenIsOn)" || echo "Success"
+            done
+            ;;
+
+        iOS )
+            ;;
+
+        * )
+            print_usage && exit 1
+            ;;
+    esac
+
+    echo ""
+}
+
 
 function get_build_name() {
     local _url="${url}${prodname}${platform}${job_name}/"
@@ -36,7 +65,7 @@ function get_build_name() {
     local version="${major}.${middle}.${minor}"
 
     local _number="${number}"
-    [ "${number}" = "lastBuild" ] && _number="[0-9][0-9]?[0-9]?[0-9]?"
+    [ "${number}" = "lastSuccessfulBuild" ] && _number="[0-9][0-9]?[0-9]?[0-9]?"
 
     case "$platform" in
         Android )
@@ -85,34 +114,44 @@ function get_build_name() {
     esac
 
     build_name=`curl -s "${_url}${number}/" | sed -En 's/'$apk_regex'/\1/p'`
-
-    # [ -z "${build_name}" ] && echo "Cannot get filename ($number)."
+    # [ -z "${build_name}" ] && echo "Cannot get filename ($number)." && exit 1
 }
 
 
 function download_build() {
-    echo "Downloading ${build_name} ..."
+    if [ "${action}" != "archive" ]; then
+        echo "Downloading ${build_name} ..."
+    else
+        echo "Archiving ${prodname}${platform}${job_name}: ${number} ..."
+        [ "${platform}" = "iOS" ] && build_name="*.ipa" || build_name="*.apk"
+    fi
 
-    local tgt=`cd "$(dirname ~/Downloads/x)" ; pwd -P`/${build_name}
-    [ -f "${tgt}" ] && echo "Already exists in '${tgt}'" \
-                    && echo "skip downloading" \
-                    && echo "" \
-                    && return
+    local tgt=`cd "$(dirname ~/Downloads/x)" ; pwd -P`
 
+    local _path="/Users/utapass/.jenkins/jobs/${prodname}${platform}${job_name}/builds/${number}/archive/"
+    [ "${platform}" = "iOS" ] && _path="${_path}${build_name}" || _path="${_path}jenkins_output/${build_name}"
+    expect -c " 
+        spawn scp utapass@172.30.66.75:${_path} ${tgt}
+        expect \"assword:\"
+        send \"UtaPass\r\"
+        interact"
 
-    local _url="${url}${prodname}${platform}${job_name}/${number}/artifact/"
-    case "${platform}" in
-        iOS )
-            _url="${_url}${build_name}"
-            ;;
+    echo ""
+    echo "/Users/utapass/.jenkins/jobs/${prodname}${platform}${job_name}/builds/${number}/archive/"
 
-        Android )
-            _url="${_url}jenkins_output/${build_name}"
-            ;;
-    esac
+    # local _url="${url}${prodname}${platform}${job_name}/${number}/artifact/"
+    # case "${platform}" in
+    #     iOS )
+    #         _url="${_url}${build_name}"
+    #         ;;
 
-    wget ${_url} -O ${tgt}
-    [ $? -eq 0 ] && echo "" || exit 1
+    #     Android )
+    #         _url="${_url}jenkins_output/${build_name}"
+    #         ;;
+    # esac
+
+    # wget ${_url} -O ${tgt}
+    # [ $? -eq 0 ] && echo "" || exit 1
 }
 
 
@@ -183,6 +222,40 @@ function install() {
     echo ""
 }
 
+function permission() {
+    [ "${permission}" = "no" ] && return
+
+    case "${platform}" in
+        Android )
+            echo "Grant permissions ... "
+            PERMISSIONS=(
+                "READ_EXTERNAL_STORAGE"
+                "READ_PHONE_STATE"
+                "GET_ACCOUNTS"
+            )
+
+            for device in `adb devices | grep 'device$' | awk '{print $1}'`; do
+                printf '%s : ' "$device"
+
+                for permission in "${PERMISSIONS[@]}"; do
+                    printf '%s ' "$permission"
+                    adb -s "$device" shell pm grant com.kddi.android.UtaPass android.permission."${permission}"
+                done
+                echo ""
+            done
+            ;;
+
+        iOS )
+            ;;
+
+        * )
+            print_usage && exit 1
+            ;;
+    esac
+
+    echo ""
+}
+
 function launch() {
     case "${platform}" in
         Android )
@@ -208,10 +281,11 @@ function launch() {
 prodname="UtaPass"
 platform="Android"
 job_name="Dev"
-number="lastBuild"
+number="lastSuccessfulBuild"
 flavor="debug"
 
 action="install"
+permission="yes"
 
 url="https://utapass-jenkins.kkinternal.com/view/${platform}/job/"
 build_name=""
@@ -247,9 +321,6 @@ for arg in "$@"; do
         --dev | --Dev )
             job_name="Dev"; shift ;;
 
-        --freetier | --Freetier | --FreeTier | --free | --Free )
-            job_name="FreeTier"; shift ;;
-
         # ==================================================
         # build flavor (prod, debug, or test) releated
         # ==================================================
@@ -259,7 +330,7 @@ for arg in "$@"; do
         --production | --prod )
             flavor="production"; shift ;;
 
-        --debug )
+        --debug | --staging )
             flavor="debug"; shift ;;
 
         --test )
@@ -272,38 +343,63 @@ for arg in "$@"; do
             number="$2"; shift 2 ;;
 
         # ========================================
-        # action (install, upgrade, or remove)
+        # action (install, upgrade, remove, or archive)
         # ========================================
         --action | -a )
             action="$2"; shift 2 ;;
 
         --upgrade )
-            action="upgrade"; shift 2 ;;
+            action="upgrade"; shift ;;
+
+        --remove )
+            action="remove"; shift ;;
+
+        --archive )
+            action="archive"; shift ;;
+
+        # ========================================
+        # action (install, upgrade, or remove)
+        # ========================================
+        --permission )
+            permission="$2"; shift 2 ;;
+
+        --permission-all )
+            permission="yes"; shift ;;
 
     esac
 done
 
+echo ""
+
 case "$action" in
     install )
-        get_build_name \
+        screen_turn_on \
+            && get_build_name \
             && download_build \
             && uninstall \
             && install \
+            && permission \
             && launch
         ;;
 
     upgrade )
-        get_build_name \
+        screen_turn_on \
+            && get_build_name \
             && download_build \
             && install \
+            && permission \
             && launch
         ;;
 
+    archive )
+        get_build_name \
+            && download_build
+        ;;
+
     remove )
-        uninstall
+        screen_turn_on \
+            && uninstall
         ;;
 esac
 
-
-
-
+exit 0
